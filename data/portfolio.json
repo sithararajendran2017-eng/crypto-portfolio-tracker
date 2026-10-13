@@ -1,0 +1,16 @@
+[
+  {
+    "id": "btc-01",
+    "symbol": "BTC",
+    "name": "Bitcoin",
+    "quantity": 0.5,
+    "purchase_price": 59000.0
+  },
+  {
+    "id": "2238fbba",
+    "symbol": "BTC",
+    "name": "Bitcoin",
+    "quantity": 1.0,
+    "purchase_price": 83276.81
+  }
+]

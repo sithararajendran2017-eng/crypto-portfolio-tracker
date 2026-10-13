@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Price Forecasting Studio - CryptoXAI{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Cryptocurrency Price Forecasting Studio</h2>
+        <p class="text-muted mb-0">Select an asset, data feed, and forecast horizon to generate user-driven ARIMA and LSTM predictions.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-primary-subtle text-primary border border-primary px-3 py-2">
+            <i class="bi bi-sliders me-1"></i> User-Driven Modeling
+        </span>
+    </div>
+</div>
+
+<!-- Interactive Forecasting Parameter Configuration Form -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-sliders2 me-2 text-primary"></i>Forecast Configuration Parameters</h5>
+        <span class="badge bg-light text-secondary border">Academic Evaluation Pipeline</span>
+    </div>
+    <div class="card-body p-4">
+        <form action="{{ url_for('generate_forecast') }}" method="POST" enctype="multipart/form-data" id="forecastForm">
+            <div class="row g-3">
+                <!-- Select Cryptocurrency -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">1. Select Cryptocurrency</label>
+                    <select name="crypto_symbol" class="form-select" id="cryptoSelect" required>
+                        {% for sym, info in supported_cryptos.items() %}
+                            <option value="{{ sym }}" {% if result and result.symbol == sym %}selected{% elif not result and sym == 'BTC' %}selected{% endif %}>
+                                {{ sym }} — {{ info.name }} ({{ info.ticker }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Choose from >10 supported market assets.</div>
+                </div>
+
+                <!-- Data Source Selection -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">2. Historical Data Source</label>
+                    <select name="data_source" class="form-select" id="dataSourceSelect" onchange="toggleDataSourceFields()" required>
+                        <option value="api" selected>Public API Feed (Yahoo Finance)</option>
+                        <option value="csv">Upload Custom CSV Dataset</option>
+                    </select>
+                    <div class="form-text">Use online market feed or offline CSV archive.</div>
+                </div>
+
+                <!-- API Historical Lookback Period (Visible when API selected) -->
+                <div class="col-md-4" id="apiPeriodContainer">
+                    <label class="form-label fw-semibold">3. Historical Range</label>
+                    <select name="period_years" class="form-select">
+                        <option value="1">1 Year (~365 daily observations)</option>
+                        <option value="2" selected>2 Years (~730 daily observations) [Recommended]</option>
+                        <option value="3">3 Years (~1,095 daily observations)</option>
+                    </select>
+                    <div class="form-text">Chronological training observation depth.</div>
+                </div>
+
+                <!-- Custom CSV Upload Field (Visible when CSV selected) -->
+                <div class="col-md-4 d-none" id="csvUploadContainer">
+                    <label class="form-label fw-semibold">3. Upload CSV File</label>
+                    <input type="file" name="csv_file" class="form-control" accept=".csv">
+                    <div class="form-text">Must contain <code>Date</code> and <code>Close</code> columns.</div>
+                </div>
+
+                <!-- Forecast Horizon -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">4. Forecast Horizon</label>
+                    <select name="horizon_days" class="form-select" required>
+                        <option value="1">1 Day Ahead</option>
+                        <option value="7" {% if not result or result.horizon_days == 7 %}selected{% endif %}>7 Days Ahead [Recommended]</option>
+                        <option value="14" {% if result and result.horizon_days == 14 %}selected{% endif %}>14 Days Ahead</option>
+                        <option value="30" {% if result and result.horizon_days == 30 %}selected{% endif %}>30 Days Ahead</option>
+                    </select>
+                    <div class="form-text">Out-of-sample forward projection length.</div>
+                </div>
+
+                <!-- Forecasting Model Selection -->
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">5. Model Architecture</label>
+                    <select name="model_choice" class="form-select" required>
+                        <option value="both" {% if not result or result.model_choice == 'both' %}selected{% endif %}>Both ARIMA & LSTM (Comparative Benchmark)</option>
+                        <option value="arima" {% if result and result.model_choice == 'arima' %}selected{% endif %}>ARIMA (Classical Econometrics)</option>
+                        <option value="lstm" {% if result and result.model_choice == 'lstm' %}selected{% endif %}>LSTM (Deep Neural Network)</option>
+                    </select>
+                    <div class="form-text">Choose individual model or side-by-side comparison.</div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm" id="submitBtn">
+                        <i class="bi bi-play-fill me-1"></i> Generate Forecast
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- FORECAST EXECUTION RESULTS SECTION -->
+{% if result %}
+<div class="mb-4">
+    <!-- Dataset & Partition Summary Banner -->
+    <div class="card border-0 shadow-sm bg-dark text-white mb-4">
+        <div class="card-body p-4">
+            <div class="row align-items-center g-3">
+                <div class="col-md-6">
+                    <div class="text-warning small text-uppercase fw-semibold mb-1">
+                        <i class="bi bi-database-check me-1"></i> Data Source & Partitioning
+                    </div>
+                    <h4 class="fw-bold mb-1">{{ result.dataset_name }}</h4>
+                    <div class="text-white-50 small">
+                        Total Records: <strong>{{ result.total_records }} days</strong> | Horizon: <strong>{{ result.horizon_days }} days forward</strong>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-inline-block text-start bg-secondary bg-opacity-25 p-2 rounded small border border-secondary">
+                        <div><strong>Training Set:</strong> {{ result.train_records }} observations ({{ result.train_start }} to {{ result.train_end }})</div>
+                        <div><strong>Holdout Test Set:</strong> {{ result.test_records }} observations ({{ result.test_start }} to {{ result.test_end }})</div>
+                        <div class="text-warning-emphasis"><i class="bi bi-shield-check me-1"></i>Zero lookahead data leakage between splits</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparative Performance Matrix (When Both Models are Run) -->
+    {% if result.arima and result.lstm %}
+        {% set arima_m = result.arima.metrics %}
+        {% set lstm_m = result.lstm.metrics %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-bar-chart-steps text-primary me-2"></i>Holdout Test Evaluation Benchmark (30 Days)
+                </h5>
+                <a href="{{ url_for('comparison_page') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Detailed Comparison Report
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-center">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th class="text-start ps-4">Model Architecture</th>
+                                <th>Mean Absolute Error (MAE)</th>
+                                <th>Root Mean Squared Error (RMSE)</th>
+                                <th>Mean Absolute % Error (MAPE)</th>
+                                <th>Optimal Metric</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-start ps-4 fw-bold text-primary">
+                                    <i class="bi bi-activity me-1"></i> ARIMA({{ result.arima.order|join(', ') }})
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    ${{ "{:,.2f}".format(arima_m.mae) }}
+                                    {% if arima_m.mae <= lstm_m.mae %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    ${{ "{:,.2f}".format(arima_m.rmse) }}
+                                    {% if arima_m.rmse <= lstm_m.rmse %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    {{ arima_m.mape }}%
+                                    {% if arima_m.mape <= lstm_m.mape %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set arima_wins = (1 if arima_m.mae <= lstm_m.mae else 0) + (1 if arima_m.rmse <= lstm_m.rmse else 0) + (1 if arima_m.mape <= lstm_m.mape else 0) %}
+                                    <span class="badge {{ 'bg-primary' if arima_wins >= 2 else 'bg-secondary' }}">
+                                        {{ arima_wins }} of 3 lower error
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-start ps-4 fw-bold text-success">
+                                    <i class="bi bi-cpu me-1"></i> LSTM Neural Network
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    ${{ "{:,.2f}".format(lstm_m.mae) }}
+                                    {% if lstm_m.mae < arima_m.mae %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    ${{ "{:,.2f}".format(lstm_m.rmse) }}
+                                    {% if lstm_m.rmse < arima_m.rmse %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold font-monospace">
+                                    {{ lstm_m.mape }}%
+                                    {% if lstm_m.mape < arima_m.mape %}
+                                        <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Lower</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% set lstm_wins = (1 if lstm_m.mae < arima_m.mae else 0) + (1 if lstm_m.rmse < arima_m.rmse else 0) + (1 if lstm_m.mape < arima_m.mape else 0) %}
+                                    <span class="badge {{ 'bg-success' if lstm_wins >= 2 else 'bg-secondary' }}">
+                                        {{ lstm_wins }} of 3 lower error
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% elif result.arima %}
+        <!-- Single ARIMA Metrics Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-primary border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">ARIMA MAE</div>
+                        <h3 class="fw-bold text-dark mt-1">${{ "{:,.2f}".format(result.arima.metrics.mae) }}</h3>
+                        <div class="small text-muted">Mean Absolute Error</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-warning border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">ARIMA RMSE</div>
+                        <h3 class="fw-bold text-dark mt-1">${{ "{:,.2f}".format(result.arima.metrics.rmse) }}</h3>
+                        <div class="small text-muted">Root Mean Squared Error</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">ARIMA MAPE</div>
+                        <h3 class="fw-bold text-success mt-1">{{ result.arima.metrics.mape }}%</h3>
+                        <div class="small text-muted">Mean Absolute Percentage Error</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% elif result.lstm %}
+        <!-- Single LSTM Metrics Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-success border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">LSTM MAE</div>
+                        <h3 class="fw-bold text-dark mt-1">${{ "{:,.2f}".format(result.lstm.metrics.mae) }}</h3>
+                        <div class="small text-muted">Mean Absolute Error</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-warning border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">LSTM RMSE</div>
+                        <h3 class="fw-bold text-dark mt-1">${{ "{:,.2f}".format(result.lstm.metrics.rmse) }}</h3>
+                        <div class="small text-muted">Root Mean Squared Error</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card stat-card shadow-sm border-0 border-start border-info border-4">
+                    <div class="card-body">
+                        <div class="text-muted small text-uppercase fw-semibold">LSTM MAPE</div>
+                        <h3 class="fw-bold text-success mt-1">{{ result.lstm.metrics.mape }}%</h3>
+                        <div class="small text-muted">Mean Absolute Percentage Error</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Interactive Actual vs Predicted Price Visualization -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-graph-up text-primary me-2"></i>Actual vs. Predicted Price Trajectory
+            </h5>
+            <span class="badge bg-light text-dark border">
+                30-Day Test Set + {{ result.horizon_days }}-Day Forward Forecast
+            </span>
+        </div>
+        <div class="card-body p-4">
+            <div style="position: relative; height: 400px;">
+                <canvas id="forecastChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-Day Future Out-of-Sample Forecast Table -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-calendar-range text-warning me-2"></i>Future {{ result.horizon_days }}-Day Price Projections
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-end">
+                            <thead class="table-light small text-uppercase">
+                                <tr>
+                                    <th class="text-start ps-4">Date</th>
+                                    {% if result.arima %}<th>ARIMA Forecast</th>{% endif %}
+                                    {% if result.lstm %}<th>LSTM Forecast</th>{% endif %}
+                                    <th class="text-center pe-4">Projected Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set future_dates = result.arima.future_dates if result.arima else result.lstm.future_dates %}
+                                {% set last_actual = result.actual_test_prices[-1] %}
+                                {% for i in range(future_dates|length) %}
+                                    <tr>
+                                        <td class="text-start ps-4 fw-semibold">{{ future_dates[i] }}</td>
+                                        {% if result.arima %}
+                                            {% set af = result.arima.future_forecast[i] %}
+                                            {% set a_delta = af - (result.arima.future_forecast[i-1] if i > 0 else last_actual) %}
+                                            <td class="fw-bold text-primary font-monospace">
+                                                ${{ "{:,.2f}".format(af) }}
+                                                <div class="small {{ 'text-success' if a_delta >= 0 else 'text-danger' }}">
+                                                    {{ '+' if a_delta >= 0 else '' }}${{ "{:,.2f}".format(a_delta) }}
+                                                </div>
+                                            </td>
+                                        {% endif %}
+                                        {% if result.lstm %}
+                                            {% set lf = result.lstm.future_forecast[i] %}
+                                            {% set l_delta = lf - (result.lstm.future_forecast[i-1] if i > 0 else last_actual) %}
+                                            <td class="fw-bold text-success font-monospace">
+                                                ${{ "{:,.2f}".format(lf) }}
+                                                <div class="small {{ 'text-success' if l_delta >= 0 else 'text-danger' }}">
+                                                    {{ '+' if l_delta >= 0 else '' }}${{ "{:,.2f}".format(l_delta) }}
+                                                </div>
+                                            </td>
+                                        {% endif %}
+                                        <td class="text-center pe-4">
+                                            {% set primary_val = result.lstm.future_forecast[i] if result.lstm else result.arima.future_forecast[i] %}
+                                            {% set trend_delta = primary_val - last_actual %}
+                                            {% if trend_delta > 0 %}
+                                                <span class="badge bg-success-subtle text-success"><i class="bi bi-arrow-up-right"></i> Bullish</span>
+                                            {% elif trend_delta < 0 %}
+                                                <span class="badge bg-danger-subtle text-danger"><i class="bi bi-arrow-down-right"></i> Bearish</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-arrow-right"></i> Flat</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Model Diagnostics Card -->
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-cpu-fill text-info me-2"></i>Execution Diagnostics
+                    </h5>
+                </div>
+                <div class="card-body p-4 small">
+                    {% if result.arima %}
+                        <div class="mb-3 border-bottom pb-3">
+                            <h6 class="fw-bold text-primary mb-1">ARIMA Model Diagnostics</h6>
+                            <ul class="list-unstyled mb-0 text-muted">
+                                <li><strong>Selected Order:</strong> ARIMA({{ result.arima.order|join(', ') }})</li>
+                                <li><strong>AIC / BIC:</strong> {{ result.arima.aic }} / {{ result.arima.bic }}</li>
+                                <li><strong>ADF Test Statistic:</strong> {{ result.arima.stationarity.adf_statistic }} (p={{ result.arima.stationarity.p_value }})</li>
+                                <li><strong>Differencing:</strong> {{ 'Differencing d=1 Applied' if not result.arima.stationarity.is_stationary else 'Stationary Series' }}</li>
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    {% if result.lstm %}
+                        <div>
+                            <h6 class="fw-bold text-success mb-1">LSTM Network Diagnostics</h6>
+                            <ul class="list-unstyled mb-0 text-muted">
+                                <li><strong>Architecture:</strong> {{ result.lstm.architecture }}</li>
+                                <li><strong>Lookback Window:</strong> {{ result.lstm.lookback_window }} days</li>
+                                <li><strong>Epochs Trained:</strong> {{ result.lstm.epochs_run }} (Early Stopping monitored)</li>
+                                <li><strong>Final Loss / Val Loss:</strong> {{ result.lstm.final_loss }} / {{ result.lstm.final_val_loss }}</li>
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Initial Empty State -->
+<div class="card border-0 shadow-sm text-center py-5 mb-4">
+    <div class="card-body py-5">
+        <i class="bi bi-graph-up-arrow display-3 text-secondary mb-3 d-block opacity-50"></i>
+        <h4 class="fw-bold text-dark">Ready to Generate Predictions</h4>
+        <p class="text-muted col-md-6 mx-auto mb-4">
+            Select your cryptocurrency, historical data feed, forecast horizon, and model architecture above, then click <strong>"Generate Forecast"</strong> to run real-time predictions.
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleDataSourceFields() {
+        const source = document.getElementById('dataSourceSelect').value;
+        const apiCont = document.getElementById('apiPeriodContainer');
+        const csvCont = document.getElementById('csvUploadContainer');
+
+        if (source === 'csv') {
+            apiCont.classList.add('d-none');
+            csvCont.classList.remove('d-none');
+        } else {
+            apiCont.classList.remove('d-none');
+            csvCont.classList.add('d-none');
+        }
+    }
+
+    document.getElementById('forecastForm').addEventListener('submit', function() {
+        const btn = document.getElementById('submitBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Training & Forecasting...';
+        btn.disabled = true;
+        this.submit();
+    });
+
+    {% if result %}
+    // Build combined visualization chart
+    const testDates = {{ result.test_dates|tojson }};
+    const actualPrices = {{ result.actual_test_prices|tojson }};
+    const horizonDays = {{ result.horizon_days }};
+
+    const futureDates = {% if result.arima %}{{ result.arima.future_dates|tojson }}{% else %}{{ result.lstm.future_dates|tojson }}{% endif %};
+    const allLabels = [...testDates, ...futureDates];
+
+    const actualDataset = [...actualPrices, ...new Array(futureDates.length).fill(null)];
+
+    const datasets = [
+        {
+            label: 'Actual Price (Test Period)',
+            data: actualDataset,
+            borderColor: '#212529',
+            backgroundColor: 'rgba(33, 37, 41, 0.05)',
+            borderWidth: 2.5,
+            pointRadius: 3,
+            tension: 0.1
+        }
+    ];
+
+    {% if result.arima %}
+        const arimaPreds = {{ result.arima.predicted_test_prices|tojson }};
+        const arimaFuture = {{ result.arima.future_forecast|tojson }};
+
+        datasets.push({
+            label: 'ARIMA (1-Step Rolling Test)',
+            data: [...arimaPreds, ...new Array(futureDates.length).fill(null)],
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.05)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.1
+        });
+
+        datasets.push({
+            label: 'ARIMA Future Forecast',
+            data: [
+                ...new Array(testDates.length - 1).fill(null),
+                actualPrices[actualPrices.length - 1],
+                ...arimaFuture
+            ],
+            borderColor: '#0d6efd',
+            borderDash: [5, 5],
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.1
+        });
+    {% endif %}
+
+    {% if result.lstm %}
+        const lstmPreds = {{ result.lstm.predicted_test_prices|tojson }};
+        const lstmFuture = {{ result.lstm.future_forecast|tojson }};
+
+        datasets.push({
+            label: 'LSTM (Test Predictions)',
+            data: [...lstmPreds, ...new Array(futureDates.length).fill(null)],
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.05)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.1
+        });
+
+        datasets.push({
+            label: 'LSTM Future Forecast',
+            data: [
+                ...new Array(testDates.length - 1).fill(null),
+                actualPrices[actualPrices.length - 1],
+                ...lstmFuture
+            ],
+            borderColor: '#198754',
+            borderDash: [5, 5],
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.1
+        });
+    {% endif %}
+
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { boxWidth: 14 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (context.raw === null) return '';
+                            return `${context.dataset.label}: $${context.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } }
+                },
+                y: {
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

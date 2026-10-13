@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Project Overview & Scope - CryptoXAI{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-info-circle text-primary me-2"></i>Platform Architecture & Overview</h2>
+        <p class="text-muted mb-0">System objectives, analytical forecasting pipelines, and technical specifications.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-primary px-3 py-2">
+            Production Prototype v1.0
+        </span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Implemented Scope for Current Semester -->
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-check2-circle text-success me-2"></i>Implemented System Features</h5>
+                <span class="badge bg-success-subtle text-success">Active & Functional</span>
+            </div>
+            <div class="card-body p-4">
+                <ol class="list-group list-group-numbered list-group-flush">
+                    <li class="list-group-item px-0 py-2 border-0">
+                        <strong>Cryptocurrency Portfolio Tracking:</strong> Multi-asset tracking (BTC, ETH, SOL, BNB, etc.), position valuations, asset allocation percentages, and gain/loss computations.
+                    </li>
+                    <li class="list-group-item px-0 py-2 border-0">
+                        <strong>Interactive Forecasting Studio:</strong> User-driven parameter configuration supporting >10 cryptocurrencies, API lookback ranges (1–3 years), CSV dataset upload, and configurable forecast horizons (1, 7, 14, 30 days).
+                    </li>
+                    <li class="list-group-item px-0 py-2 border-0">
+                        <strong>Functioning ARIMA Econometric Model:</strong> Stationarity verification via the Augmented Dickey-Fuller (ADF) test, order selection via AIC minimization, and rolling walk-forward evaluation.
+                    </li>
+                    <li class="list-group-item px-0 py-2 border-0">
+                        <strong>Functioning LSTM Deep Neural Network:</strong> Strict training-only MinMaxScaler scaling, sliding sequence preparation (30-day lookback), Dropout regularization, EarlyStopping, and multi-step recursive forecasting.
+                    </li>
+                    <li class="list-group-item px-0 py-2 border-0">
+                        <strong>Scientific Performance Benchmarking:</strong> Comparative evaluation on identical 30-day chronological test partitions using standardized MAE, RMSE, and MAPE metrics.
+                    </li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Planned Future Enhancements -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Upcoming Platform Extensions</h5>
+                <span class="badge bg-secondary-subtle text-secondary">Documented Roadmap</span>
+            </div>
+            <div class="card-body p-4">
+                <p class="small text-muted mb-3">The following advanced components are scheduled for subsequent development:</p>
+                <div class="row g-3 small">
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded bg-light h-100">
+                            <strong class="text-primary"><i class="bi bi-cpu me-1"></i> Explainable AI (SHAP)</strong>
+                            <p class="text-secondary mb-0 mt-1">Shapley Additive exPlanations for neural forecasting attribution across historical input lag features.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 border rounded bg-light h-100">
+                            <strong class="text-warning"><i class="bi bi-shield-check me-1"></i> Portfolio Risk Scoring</strong>
+                            <p class="text-secondary mb-0 mt-1">Composite risk scoring integrating 30-day volatility ($V$), asset concentration ($C = \sum w_i^2$), and pairwise correlation ($\bar{\rho}$).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tech Stack & Rigor Guidelines -->
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-code-slash text-primary me-2"></i>Technology Stack</h5>
+            </div>
+            <div class="card-body p-4">
+                <table class="table table-sm table-borderless small mb-0">
+                    <tbody>
+                        <tr>
+                            <td class="text-muted">Backend Framework</td>
+                            <td class="fw-semibold">Python 3.11 / Flask</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Frontend UI</td>
+                            <td class="fw-semibold">Bootstrap 5, Chart.js</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Econometric Time Series</td>
+                            <td class="fw-semibold">Statsmodels (ARIMA)</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Deep Learning Framework</td>
+                            <td class="fw-semibold">TensorFlow / Keras (LSTM)</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Evaluation Protocol</td>
+                            <td class="fw-semibold">Scikit-learn (MAE, RMSE, MAPE)</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Data Ingestion</td>
+                            <td class="fw-semibold">Yahoo Finance & Custom CSV Upload</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm bg-light">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-check me-2 text-success"></i>Anti-Leakage Protocol</h6>
+                <p class="small text-muted mb-0">
+                    Chronological partitioning ensures that neither ARIMA differencing nor LSTM sequence scaling incorporates future test values. Both models evaluate on identical date windows, guaranteeing a scientifically sound comparison.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

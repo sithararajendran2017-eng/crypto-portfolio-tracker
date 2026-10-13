@@ -1,0 +1,637 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Dashboard & Value Forecasting - CryptoXAI{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-bold mb-1"><i class="bi bi-wallet2 text-primary me-2"></i>Cryptocurrency Portfolio</h2>
+        <p class="text-muted mb-0">Track crypto holdings, current market valuations, and future portfolio value projections.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 me-2">
+            <i class="bi bi-broadcast text-success me-1"></i> Market Feed: <strong>{{ portfolio.price_source }}</strong>
+        </span>
+        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-primary shadow-sm">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Prices
+        </a>
+    </div>
+</div>
+
+<!-- Key Financial Metrics Cards -->
+<div class="row g-3 mb-4">
+    <!-- Card 1: Total Portfolio Value -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 border-start border-primary border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Portfolio Value</div>
+                        <h3 class="fw-bold text-dark mb-0 mt-1">${{ "{:,.2f}".format(portfolio.total_current_value) }}</h3>
+                    </div>
+                    <div class="stat-icon bg-primary-subtle text-primary rounded-circle p-3">
+                        <i class="bi bi-cash-stack fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 text-muted small">
+                    Current market valuation
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Total Invested -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 border-start border-secondary border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Total Invested</div>
+                        <h3 class="fw-bold text-dark mb-0 mt-1">${{ "{:,.2f}".format(portfolio.total_invested) }}</h3>
+                    </div>
+                    <div class="stat-icon bg-secondary-subtle text-secondary rounded-circle p-3">
+                        <i class="bi bi-piggy-bank fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 text-muted small">
+                    Total acquisition cost
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Total Profit/Loss -->
+    <div class="col-sm-6 col-lg-3">
+        {% set is_profit = portfolio.total_profit_loss >= 0 %}
+        <div class="card stat-card shadow-sm border-0 border-start {{ 'border-success' if is_profit else 'border-danger' }} border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Total Return (P/L)</div>
+                        <h3 class="fw-bold {{ 'text-success' if is_profit else 'text-danger' }} mb-0 mt-1">
+                            {{ '+' if is_profit else '' }}${{ "{:,.2f}".format(portfolio.total_profit_loss) }}
+                        </h3>
+                    </div>
+                    <div class="stat-icon {{ 'bg-success-subtle text-success' if is_profit else 'bg-danger-subtle text-danger' }} rounded-circle p-3">
+                        <i class="bi {{ 'bi-graph-up-arrow' if is_profit else 'bi-graph-down-arrow' }} fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 small">
+                    <span class="badge {{ 'bg-success' if is_profit else 'bg-danger' }}">
+                        {{ '+' if is_profit else '' }}{{ portfolio.total_profit_loss_pct }}%
+                    </span>
+                    <span class="text-muted ms-1">overall return</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Total Assets -->
+    <div class="col-sm-6 col-lg-3">
+        <div class="card stat-card shadow-sm border-0 border-start border-info border-4 h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-muted small text-uppercase fw-semibold">Active Positions</div>
+                        <h3 class="fw-bold text-dark mb-0 mt-1">{{ portfolio.num_assets }}</h3>
+                    </div>
+                    <div class="stat-icon bg-info-subtle text-info rounded-circle p-3">
+                        <i class="bi bi-pie-chart fs-4"></i>
+                    </div>
+                </div>
+                <div class="mt-2 text-muted small">
+                    Across {{ portfolio.asset_allocation|length }} crypto assets
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Left Column: Holdings Table and Add Form -->
+    <div class="col-lg-8">
+        <!-- Holdings Table Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-table me-2 text-primary"></i>Personal Crypto Holdings</h5>
+                <span class="badge bg-primary rounded-pill">{{ portfolio.holdings|length }} positions</span>
+            </div>
+            <div class="card-body p-0">
+                {% if portfolio.holdings %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light small text-uppercase text-secondary">
+                                <tr>
+                                    <th class="ps-3">Asset</th>
+                                    <th class="text-end">Quantity</th>
+                                    <th class="text-end">Buy Price</th>
+                                    <th class="text-end">Market Price</th>
+                                    <th class="text-end">Current Value</th>
+                                    <th class="text-end">Profit / Loss</th>
+                                    <th class="text-end">Weight</th>
+                                    <th class="text-center pe-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in portfolio.holdings %}
+                                    {% set h_profit = h.profit_loss >= 0 %}
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="coin-badge me-2 bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold">
+                                                    {{ h.symbol[:2] }}
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">{{ h.symbol }}</div>
+                                                    <div class="text-muted small">{{ h.name }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end fw-semibold">{{ "{:,.4f}".format(h.quantity) }}</td>
+                                        <td class="text-end text-muted">${{ "{:,.2f}".format(h.purchase_price) }}</td>
+                                        <td class="text-end fw-bold">${{ "{:,.2f}".format(h.current_price) }}</td>
+                                        <td class="text-end fw-bold text-dark">${{ "{:,.2f}".format(h.current_value) }}</td>
+                                        <td class="text-end">
+                                            <div class="fw-bold {{ 'text-success' if h_profit else 'text-danger' }}">
+                                                {{ '+' if h_profit else '' }}${{ "{:,.2f}".format(h.profit_loss) }}
+                                            </div>
+                                            <span class="badge {{ 'bg-success-subtle text-success' if h_profit else 'bg-danger-subtle text-danger' }} fs-8">
+                                                {{ '+' if h_profit else '' }}{{ "{:.2f}".format(h.profit_loss_pct) }}%
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="badge bg-light text-dark border">{{ "{:.1f}".format(h.allocation_pct) }}%</span>
+                                        </td>
+                                        <td class="text-center pe-3">
+                                            <div class="btn-group btn-group-sm">
+                                                <!-- Edit Button -->
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ h.id }}" title="Edit holding">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <!-- Delete Button -->
+                                                <form action="{{ url_for('delete_holding', holding_id=h.id) }}" method="POST" onsubmit="return confirm('Remove {{ h.symbol }} holding?');" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-danger" title="Remove holding">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            <!-- Edit Holding Modal -->
+                                            <div class="modal fade text-start" id="editModal{{ h.id }}" tabindex="-1">
+                                                <div class="modal-dialog modal-dialog-centered">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h6 class="modal-title fw-bold">
+                                                                <i class="bi bi-pencil-square me-2 text-primary"></i>Edit {{ h.name }} ({{ h.symbol }}) Holding
+                                                            </h6>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <form action="{{ url_for('edit_holding', holding_id=h.id) }}" method="POST">
+                                                            <div class="modal-body">
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-semibold">Quantity</label>
+                                                                    <input type="number" step="any" min="0.00000001" name="quantity" class="form-control" value="{{ h.quantity }}" required>
+                                                                </div>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label fw-semibold">Purchase Price (USD)</label>
+                                                                    <div class="input-group">
+                                                                        <span class="input-group-text">$</span>
+                                                                        <input type="number" step="any" min="0" name="purchase_price" class="form-control" value="{{ h.purchase_price }}" required>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                                <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-folder2-open display-4 text-secondary mb-3 d-block"></i>
+                        <h5>No Holdings Added Yet</h5>
+                        <p class="small">Add your first cryptocurrency holding below to start tracking and forecasting your portfolio.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Add Holding Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle me-2 text-success"></i>Add Crypto Holding</h5>
+            </div>
+            <div class="card-body p-4">
+                <form action="{{ url_for('add_holding') }}" method="POST" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Cryptocurrency</label>
+                        <select name="symbol" class="form-select" required>
+                            <option value="" disabled selected>Select cryptocurrency...</option>
+                            {% for sym, info in supported_coins.items() %}
+                                <option value="{{ sym }}">{{ sym }} — {{ info.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Choose from top supported crypto assets.</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Quantity</label>
+                        <div class="input-group">
+                            <input type="number" step="any" min="0.00000001" name="quantity" class="form-control" placeholder="e.g. 0.5" required>
+                            <span class="input-group-text"><i class="bi bi-layers"></i></span>
+                        </div>
+                        <div class="form-text">Number of tokens/coins held.</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Purchase Price (USD)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="any" min="0" name="purchase_price" class="form-control" placeholder="e.g. 62000.00" required>
+                        </div>
+                        <div class="form-text">Unit acquisition price in USD.</div>
+                    </div>
+
+                    <div class="col-12 text-end mt-4">
+                        <button type="submit" class="btn btn-primary px-4 fw-semibold shadow-sm">
+                            <i class="bi bi-plus-lg me-1"></i> Add Holding to Portfolio
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Asset Allocation Chart & Quick Forecast Trigger -->
+    <div class="col-lg-4">
+        <!-- Asset Allocation Doughnut Chart -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Asset Allocation</h5>
+            </div>
+            <div class="card-body p-4">
+                {% if portfolio.holdings %}
+                    <div style="position: relative; height: 260px;">
+                        <canvas id="allocationChart"></canvas>
+                    </div>
+                    <div class="mt-3">
+                        <h6 class="fw-semibold small text-uppercase text-secondary mb-2">Weight Distribution:</h6>
+                        <ul class="list-group list-group-flush small">
+                            {% for sym, pct in portfolio.asset_allocation.items() %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1 border-0">
+                                    <span><i class="bi bi-circle-fill me-2 text-primary"></i>{{ sym }}</span>
+                                    <span class="fw-bold">{{ pct }}%</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% else %}
+                    <div class="py-5 text-center text-muted">
+                        <p class="small mb-0">No assets to display in chart.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Forecast Portfolio Value Launcher Card -->
+        <div class="card border-0 shadow-sm bg-dark text-white" id="portfolioForecastSection">
+            <div class="card-body p-4">
+                <h6 class="fw-bold text-uppercase text-warning mb-2">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Portfolio Value Forecasting
+                </h6>
+                <p class="small text-white-50 mb-3">
+                    Project the future value of your personal holdings across ARIMA and LSTM models:
+                </p>
+                <form action="{{ url_for('forecast_portfolio') }}" method="POST" id="portfolioForecastForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-light">Forecasting Model</label>
+                        <select name="model_choice" class="form-select form-select-sm">
+                            <option value="both" selected>Both ARIMA & LSTM (Comparative)</option>
+                            <option value="arima">ARIMA Model</option>
+                            <option value="lstm">LSTM Neural Network</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold text-light">Forecast Horizon</label>
+                        <select name="horizon_days" class="form-select form-select-sm">
+                            <option value="7" selected>7 Days Forward [Recommended]</option>
+                            <option value="14">14 Days Forward</option>
+                            <option value="1">1 Day Ahead</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold py-2 shadow-sm text-dark" id="portfolioForecastBtn" {% if not portfolio.holdings %}disabled{% endif %}>
+                        <i class="bi bi-calculator me-1"></i> Forecast Future Portfolio Value
+                    </button>
+                    {% if not portfolio.holdings %}
+                        <div class="text-danger-emphasis small mt-2">Add at least one holding above to forecast.</div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION: PORTFOLIO VALUE FORECAST RESULTS (IF GENERATED) -->
+{% if portfolio_forecast %}
+<div class="card border-0 shadow-sm mb-4 border-top border-warning border-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-bar-chart-line-fill text-warning me-2"></i>Holdings & Future Portfolio Value Forecast
+            </h5>
+            <small class="text-muted">Multi-asset valuation projection across a {{ portfolio_forecast.horizon_days }}-day forward horizon</small>
+        </div>
+        <span class="badge bg-primary px-3 py-2">
+            Model: {{ portfolio_forecast.model_choice|upper }}
+        </span>
+    </div>
+    <div class="card-body p-4">
+
+        <!-- Milestone Cards (Current vs Day 1, Day 7, Day 14) -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-lg-3">
+                <div class="card bg-light border-0 p-3 h-100">
+                    <div class="text-muted small text-uppercase fw-semibold">Current Portfolio Value</div>
+                    <h3 class="fw-bold text-dark mt-1 mb-0">${{ "{:,.2f}".format(portfolio_forecast.current_total_value) }}</h3>
+                    <div class="small text-muted mt-1">Confirmed baseline valuation</div>
+                </div>
+            </div>
+
+            {% if portfolio_forecast.milestones.day_1 %}
+                {% set d1 = portfolio_forecast.milestones.day_1 %}
+                {% set d1_val = d1.lstm_total if d1.lstm_total is defined else d1.arima_total %}
+                {% set d1_diff = d1.lstm_gain_loss if d1.lstm_gain_loss is defined else d1.arima_gain_loss %}
+                {% set d1_pct = d1.lstm_pct_change if d1.lstm_pct_change is defined else d1.arima_pct_change %}
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card bg-light border-0 p-3 h-100">
+                        <div class="text-muted small text-uppercase fw-semibold">Day 1 Projected Value</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0">${{ "{:,.2f}".format(d1_val) }}</h3>
+                        <div class="small mt-1">
+                            <span class="badge {{ 'bg-success' if d1_diff >= 0 else 'bg-danger' }}">
+                                {{ '+' if d1_diff >= 0 else '' }}${{ "{:,.2f}".format(d1_diff) }} ({{ '+' if d1_diff >= 0 else '' }}{{ d1_pct }}%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if portfolio_forecast.milestones.day_7 %}
+                {% set d7 = portfolio_forecast.milestones.day_7 %}
+                {% set d7_val = d7.lstm_total if d7.lstm_total is defined else d7.arima_total %}
+                {% set d7_diff = d7.lstm_gain_loss if d7.lstm_gain_loss is defined else d7.arima_gain_loss %}
+                {% set d7_pct = d7.lstm_pct_change if d7.lstm_pct_change is defined else d7.arima_pct_change %}
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card bg-light border-0 p-3 h-100">
+                        <div class="text-muted small text-uppercase fw-semibold">Day 7 Projected Value</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0">${{ "{:,.2f}".format(d7_val) }}</h3>
+                        <div class="small mt-1">
+                            <span class="badge {{ 'bg-success' if d7_diff >= 0 else 'bg-danger' }}">
+                                {{ '+' if d7_diff >= 0 else '' }}${{ "{:,.2f}".format(d7_diff) }} ({{ '+' if d7_diff >= 0 else '' }}{{ d7_pct }}%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if portfolio_forecast.milestones.day_14 %}
+                {% set d14 = portfolio_forecast.milestones.day_14 %}
+                {% set d14_val = d14.lstm_total if d14.lstm_total is defined else d14.arima_total %}
+                {% set d14_diff = d14.lstm_gain_loss if d14.lstm_gain_loss is defined else d14.arima_gain_loss %}
+                {% set d14_pct = d14.lstm_pct_change if d14.lstm_pct_change is defined else d14.arima_pct_change %}
+                <div class="col-sm-6 col-lg-3">
+                    <div class="card bg-light border-0 p-3 h-100">
+                        <div class="text-muted small text-uppercase fw-semibold">Day 14 Projected Value</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0">${{ "{:,.2f}".format(d14_val) }}</h3>
+                        <div class="small mt-1">
+                            <span class="badge {{ 'bg-success' if d14_diff >= 0 else 'bg-danger' }}">
+                                {{ '+' if d14_diff >= 0 else '' }}${{ "{:,.2f}".format(d14_diff) }} ({{ '+' if d14_diff >= 0 else '' }}{{ d14_pct }}%)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Trajectory Chart: Current Value Continuing Into Predicted Future -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-graph-up me-2 text-primary"></i>Projected Portfolio Valuation Trajectory
+                </h6>
+                <span class="badge bg-light text-dark border">Over Next {{ portfolio_forecast.horizon_days }} Days</span>
+            </div>
+            <div class="card-body p-4">
+                <div style="position: relative; height: 350px;">
+                    <canvas id="portfolioTrajectoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Holding-by-Holding Future Value Table -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-layers-half me-2 text-info"></i>Holding-by-Holding Forecast Breakdown
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-end">
+                        <thead class="table-light small text-uppercase">
+                            <tr>
+                                <th class="text-start ps-4">Asset</th>
+                                <th>Quantity Owned</th>
+                                <th>Current Unit Price</th>
+                                <th>Current Holding Value</th>
+                                {% if portfolio_forecast.model_choice in ['arima', 'both'] %}
+                                    <th>ARIMA Forecast Value (Day {{ portfolio_forecast.horizon_days }})</th>
+                                {% endif %}
+                                {% if portfolio_forecast.model_choice in ['lstm', 'both'] %}
+                                    <th>LSTM Forecast Value (Day {{ portfolio_forecast.horizon_days }})</th>
+                                {% endif %}
+                                <th class="text-center pe-4">Projected Shift</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set end_idx = portfolio_forecast.future_dates|length - 1 %}
+                            {% for hd in portfolio_forecast.holding_forecasts %}
+                                <tr>
+                                    <td class="text-start ps-4 fw-bold">
+                                        {{ hd.symbol }} <span class="text-muted fw-normal small">({{ hd.name }})</span>
+                                    </td>
+                                    <td class="fw-semibold font-monospace">{{ "{:,.4f}".format(hd.quantity) }}</td>
+                                    <td class="text-muted font-monospace">${{ "{:,.2f}".format(hd.current_price) }}</td>
+                                    <td class="fw-bold text-dark font-monospace">${{ "{:,.2f}".format(hd.current_value) }}</td>
+
+                                    {% if 'arima_values' in hd %}
+                                        {% set a_val = hd.arima_values[end_idx] %}
+                                        <td class="fw-bold text-primary font-monospace">${{ "{:,.2f}".format(a_val) }}</td>
+                                    {% endif %}
+
+                                    {% if 'lstm_values' in hd %}
+                                        {% set l_val = hd.lstm_values[end_idx] %}
+                                        <td class="fw-bold text-success font-monospace">${{ "{:,.2f}".format(l_val) }}</td>
+                                    {% endif %}
+
+                                    <td class="text-center pe-4">
+                                        {% set proj_val = hd.lstm_values[end_idx] if 'lstm_values' in hd else hd.arima_values[end_idx] %}
+                                        {% set diff = proj_val - hd.current_value %}
+                                        {% set pct = (diff / hd.current_value * 100) if hd.current_value > 0 else 0.0 %}
+                                        <span class="badge {{ 'bg-success-subtle text-success' if diff >= 0 else 'bg-danger-subtle text-danger' }} fs-8">
+                                            {{ '+' if diff >= 0 else '' }}${{ "{:,.2f}".format(diff) }} ({{ '+' if diff >= 0 else '' }}{{ "{:.2f}".format(pct) }}%)
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Rigor & Uncertainty Notice -->
+        <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-0">
+            <i class="bi bi-shield-exclamation fs-3 text-warning me-3"></i>
+            <div class="small">
+                <strong>Important Forecasting Methodology Notice:</strong>
+                <p class="mb-0">
+                    Projected holding valuations are calculated as $\text{Predicted Holding Value} = \text{Quantity} \times \text{Predicted Price}$ using real historical market observations. 
+                    Cryptocurrency markets feature high stochastic volatility; future projections are model estimates and do not represent guaranteed financial returns.
+                </p>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if portfolio.holdings %}
+<script>
+    // Allocation Chart
+    const allocationData = {{ portfolio.asset_allocation|tojson }};
+    const labels = Object.keys(allocationData);
+    const dataValues = Object.values(allocationData);
+
+    const modernPalette = [
+        '#0d6efd', '#20c997', '#ffc107', '#fd7e14', '#6f42c1', 
+        '#d63384', '#0dcaf0', '#198754', '#6c757d', '#343a40'
+    ];
+
+    const ctx = document.getElementById('allocationChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: dataValues,
+                backgroundColor: modernPalette.slice(0, labels.length),
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 11 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) { return `${context.label}: ${context.raw}%`; }
+                    }
+                }
+            },
+            cutout: '68%'
+        }
+    });
+
+    document.getElementById('portfolioForecastForm').addEventListener('submit', function() {
+        const btn = document.getElementById('portfolioForecastBtn');
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Calculating Portfolio Forecast...';
+        btn.disabled = true;
+        this.submit();
+    });
+</script>
+{% endif %}
+
+{% if portfolio_forecast %}
+<script>
+    // Portfolio Trajectory Line Chart
+    const pDates = ['Current', ...{{ portfolio_forecast.future_dates|tojson }}];
+    const currTotal = {{ portfolio_forecast.current_total_value }};
+    const timeline = {{ portfolio_forecast.timeline|tojson }};
+
+    const pDatasets = [];
+
+    {% if portfolio_forecast.model_choice in ['arima', 'both'] %}
+        const arimaTotals = [currTotal, ...timeline.map(t => t.arima_total)];
+        pDatasets.push({
+            label: 'ARIMA Projected Portfolio Value',
+            data: arimaTotals,
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.05)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            tension: 0.1
+        });
+    {% endif %}
+
+    {% if portfolio_forecast.model_choice in ['lstm', 'both'] %}
+        const lstmTotals = [currTotal, ...timeline.map(t => t.lstm_total)];
+        pDatasets.push({
+            label: 'LSTM Projected Portfolio Value',
+            data: lstmTotals,
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.05)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            tension: 0.1
+        });
+    {% endif %}
+
+    const ctxP = document.getElementById('portfolioTrajectoryChart').getContext('2d');
+    new Chart(ctxP, {
+        type: 'line',
+        data: {
+            labels: pDates,
+            datasets: pDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(v) { return '$' + v.toLocaleString(); }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

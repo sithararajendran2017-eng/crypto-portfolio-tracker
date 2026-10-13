@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block title %}ARIMA vs. LSTM Comparison - CryptoXAI{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-bar-chart-steps text-primary me-2"></i>ARIMA vs. LSTM Model Comparison</h2>
+        <p class="text-muted mb-0">Empirical evaluation of linear econometric modeling versus deep recurrent neural networks on identical holdout test series.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('forecast_page') }}" class="btn btn-outline-primary shadow-sm">
+            <i class="bi bi-sliders me-1"></i> Configure New Forecast
+        </a>
+    </div>
+</div>
+
+{% if result and result.arima and result.lstm %}
+    {% set arima_m = result.arima.metrics %}
+    {% set lstm_m = result.lstm.metrics %}
+
+    <!-- Comparison Summary Banner -->
+    <div class="card border-0 shadow-sm bg-dark text-white mb-4">
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-md-7">
+                    <span class="badge bg-warning text-dark text-uppercase px-3 py-1 mb-2">Benchmark Dataset</span>
+                    <h4 class="fw-bold mb-1">{{ result.dataset_name }}</h4>
+                    <p class="text-white-50 small mb-0">
+                        Evaluated across <strong>{{ result.test_records }} chronological test days</strong> ({{ result.test_start }} to {{ result.test_end }}).
+                    </p>
+                </div>
+                <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                    {% set arima_score = (1 if arima_m.mae <= lstm_m.mae else 0) + (1 if arima_m.rmse <= lstm_m.rmse else 0) + (1 if arima_m.mape <= lstm_m.mape else 0) %}
+                    {% if arima_score >= 2 %}
+                        <div class="badge bg-primary fs-6 px-3 py-2">
+                            <i class="bi bi-award-fill me-1"></i> ARIMA Achieved Lower Error
+                        </div>
+                    {% else %}
+                        <div class="badge bg-success fs-6 px-3 py-2">
+                            <i class="bi bi-award-fill me-1"></i> LSTM Achieved Lower Error
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quantitative Metrics Table -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-table me-2 text-primary"></i>Quantitative Performance Matrix</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-center">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th class="text-start ps-4">Model Architecture</th>
+                            <th>Mean Absolute Error (MAE)</th>
+                            <th>Root Mean Squared Error (RMSE)</th>
+                            <th>Mean Absolute % Error (MAPE)</th>
+                            <th>Evaluation Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-start ps-4 fw-bold text-primary">
+                                <i class="bi bi-activity me-2"></i>ARIMA({{ result.arima.order|join(', ') }})
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                ${{ "{:,.2f}".format(arima_m.mae) }}
+                                {% if arima_m.mae <= lstm_m.mae %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                ${{ "{:,.2f}".format(arima_m.rmse) }}
+                                {% if arima_m.rmse <= lstm_m.rmse %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                {{ arima_m.mape }}%
+                                {% if arima_m.mape <= lstm_m.mape %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">Linear Econometric</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-start ps-4 fw-bold text-success">
+                                <i class="bi bi-cpu me-2"></i>LSTM Neural Network
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                ${{ "{:,.2f}".format(lstm_m.mae) }}
+                                {% if lstm_m.mae < arima_m.mae %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                ${{ "{:,.2f}".format(lstm_m.rmse) }}
+                                {% if lstm_m.rmse < arima_m.rmse %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold font-monospace fs-5">
+                                {{ lstm_m.mape }}%
+                                {% if lstm_m.mape < arima_m.mape %}
+                                    <span class="badge bg-success ms-1 small"><i class="bi bi-check-circle"></i> Winner</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">Deep Recurrent Network</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Bar Chart Comparison -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-bar-chart me-2 text-primary"></i>Error Metric Comparison (MAE & RMSE)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="errorBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pie-chart me-2 text-success"></i>Relative Percentage Error (MAPE)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="mapeBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Synthesis & Discussion for Viva Review -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-mortarboard-fill text-primary me-2"></i>Scientific Evaluation & Discussion</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h6 class="fw-bold text-primary mb-2">1. Methodology Integrity & Fair Benchmark</h6>
+                    <p class="small text-muted mb-0">
+                        Both ARIMA and LSTM models were evaluated on the <strong>identical chronological test window</strong> of {{ result.test_records }} days. Preprocessing scalers and differencing parameters were strictly isolated to the training partition, eliminating lookahead bias and data leakage.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-bold text-success mb-2">2. Linear vs. Non-Linear Dynamics</h6>
+                    <p class="small text-muted mb-0">
+                        ARIMA is grounded in linear stochastic processes, assuming stationarity after differencing. In contrast, LSTM maintains gated memory cells (input, forget, output gates) capable of approximating non-linear price patterns over sliding historical windows.
+                    </p>
+                </div>
+                <div class="col-12">
+                    <div class="alert alert-warning border-0 shadow-sm mb-0">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-exclamation-triangle-fill fs-4 text-warning me-3 mt-1"></i>
+                            <div>
+                                <strong>Important Academic Conclusion:</strong>
+                                <p class="mb-0 small">
+                                    A model achieving lower error on a specific holdout window does <em>not</em> guarantee consistent superiority across different market regimes. Cryptocurrency markets exhibit structural breaks, sudden liquidity shifts, and regulatory shocks that can impact statistical models differently over time.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <!-- Empty State -->
+    <div class="card border-0 shadow-sm text-center py-5">
+        <div class="card-body py-5">
+            <i class="bi bi-bar-chart-steps display-3 text-secondary mb-3 d-block opacity-50"></i>
+            <h4 class="fw-bold text-dark">No Comparative Benchmark Generated Yet</h4>
+            <p class="text-muted col-md-6 mx-auto mb-4">
+                To generate a side-by-side comparison between ARIMA and LSTM, open the Forecasting Studio, select <strong>"Both ARIMA & LSTM"</strong> as the model architecture, and click <strong>"Generate Forecast"</strong>.
+            </p>
+            <a href="{{ url_for('forecast_page') }}" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-play-fill me-1"></i> Open Forecasting Studio
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if result and result.arima and result.lstm %}
+<script>
+    const arimaMAE = {{ result.arima.metrics.mae }};
+    const arimaRMSE = {{ result.arima.metrics.rmse }};
+    const arimaMAPE = {{ result.arima.metrics.mape }};
+
+    const lstmMAE = {{ result.lstm.metrics.mae }};
+    const lstmRMSE = {{ result.lstm.metrics.rmse }};
+    const lstmMAPE = {{ result.lstm.metrics.mape }};
+
+    // Chart 1: MAE & RMSE Grouped Bar Chart
+    const ctx1 = document.getElementById('errorBarChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: ['Mean Absolute Error (MAE)', 'Root Mean Squared Error (RMSE)'],
+            datasets: [
+                {
+                    label: 'ARIMA',
+                    data: [arimaMAE, arimaRMSE],
+                    backgroundColor: 'rgba(13, 110, 253, 0.8)',
+                    borderColor: '#0d6efd',
+                    borderWidth: 1
+                },
+                {
+                    label: 'LSTM',
+                    data: [lstmMAE, lstmRMSE],
+                    backgroundColor: 'rgba(25, 135, 84, 0.8)',
+                    borderColor: '#198754',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: $${context.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(v) { return '$' + v.toLocaleString(); }
+                    }
+                }
+            }
+        }
+    });
+
+    // Chart 2: MAPE Bar Chart
+    const ctx2 = document.getElementById('mapeBarChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: ['ARIMA', 'LSTM'],
+            datasets: [
+                {
+                    label: 'MAPE (%)',
+                    data: [arimaMAPE, lstmMAPE],
+                    backgroundColor: ['rgba(13, 110, 253, 0.8)', 'rgba(25, 135, 84, 0.8)'],
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `MAPE: ${context.raw}%`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(v) { return v + '%'; }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

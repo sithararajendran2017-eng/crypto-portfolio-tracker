@@ -1,0 +1,15 @@
+# Crypto Portfolio Tracker with ARIMA, LSTM, and XAI
+# Core Requirements
+
+Flask>=3.0.0
+requests>=2.31.0
+pandas>=2.0.0
+numpy>=1.24.0,<2.0.0
+scikit-learn>=1.3.0
+statsmodels>=0.14.0
+plotly>=5.18.0
+matplotlib>=3.7.0
+
+# Forecasting & Explainability (Used in Weeks 2-3)
+# tensorflow>=2.15.0
+# shap>=0.44.0

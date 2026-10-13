@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Explainable AI (SHAP) - CryptoXAI{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold mb-1"><i class="bi bi-cpu text-primary me-2"></i>Explainable AI with SHAP</h2>
+        <p class="text-muted mb-0">Model interpretability and feature attribution based on cooperative game theory (Shapley values).</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-secondary-subtle text-secondary border px-3 py-2">
+            <i class="bi bi-clock-history me-1"></i> Module 6 (Scheduled for Week 3)
+        </span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-lightbulb text-warning me-2"></i>Why Explainability (XAI) in Financial Forecasting?</h5>
+            </div>
+            <div class="card-body p-4">
+                <p>
+                    Black-box machine learning algorithms like Deep LSTMs provide high non-linear capacity but lack transparency. Stakeholders and risk managers cannot verify why a specific price trend or directional shift is predicted.
+                </p>
+                <p>
+                    <strong>SHAP (SHapley Additive exPlanations)</strong> provides mathematically grounded local and global feature attribution:
+                </p>
+                <div class="row g-3 my-2">
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light h-100">
+                            <h6 class="fw-bold text-primary"><i class="bi bi-calendar3-range me-2"></i>Temporal Lag Attribution</h6>
+                            <p class="small text-muted mb-0">Quantify which past lookback days ($t-1, t-2, \dots, t-k$) contributed most positively or negatively toward the upcoming predicted price.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded p-3 bg-light h-100">
+                            <h6 class="fw-bold text-success"><i class="bi bi-shield-check me-2"></i>Auditable Insights</h6>
+                            <p class="small text-muted mb-0">Eliminates reliance on opaque outputs, verifying whether predictions are driven by authentic recent market trends rather than noise.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 border-bottom">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-check2-circle text-primary me-2"></i>Planned XAI Architecture</h5>
+            </div>
+            <div class="card-body p-4 small">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-3 d-flex align-items-start">
+                        <i class="bi bi-dot text-primary fs-4 lh-1 me-1"></i>
+                        <div><strong>Explainer:</strong> <code>shap.GradientExplainer</code> or <code>shap.DeepExplainer</code> for Keras LSTM.</div>
+                    </li>
+                    <li class="mb-3 d-flex align-items-start">
+                        <i class="bi bi-dot text-primary fs-4 lh-1 me-1"></i>
+                        <div><strong>Background Reference:</strong> Sampled slice from historical training sequences.</div>
+                    </li>
+                    <li class="d-flex align-items-start">
+                        <i class="bi bi-dot text-primary fs-4 lh-1 me-1"></i>
+                        <div><strong>Visualization:</strong> Summary force plots and lag importance bar charts rendered dynamically.</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
